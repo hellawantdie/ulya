@@ -48,8 +48,9 @@ async def health_check(request):
 async def run_web_server():
     """Запускает веб-сервер для обработки запросов от cron-job.org"""
     app = web.Application()
-    app.router.add_get('/cron', health_check)  # эндпоинт для cron-job.org
-    app.router.add_get('/health', health_check)  # запасной эндпоинт
+    app.router.add_get('/cron', health_check)
+    app.router.add_get('/health', health_check)
+    app.router.add_get('/', health_check)  # добавил и корневой URL
 
     port = int(os.environ.get('PORT', 10000))
     runner = web.AppRunner(app)
@@ -57,6 +58,7 @@ async def run_web_server():
     site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
     print(f"✅ Веб-сервер для keep-alive запущен на порту {port}")
+    print(f"📌 Эндпоинты: /cron, /health, /")
 
 # --------------------------------------
 # СОСТОЯНИЯ FSM
@@ -360,10 +362,24 @@ async def block(callback: CallbackQuery):
     await callback.answer("Пользователь заблокирован.")
     await callback.message.edit_text("✅ Пользователь успешно заблокирован.")
 
+
 # --------------------------------------
-# ЗАПУСК БОТА
+# ЗАПУСК БОТА (ИСПРАВЛЕНО!)
 # --------------------------------------
 load_links()
 
+# ← ВАЖНО: ЭТА ЧАСТЬ ПОЛНОСТЬЮ ИСПРАВЛЕНА!
 if __name__ == '__main__':
-    executor.start_polling(dp)
+    print("🚀 Запуск бота...")
+
+    # Создаем и запускаем веб-сервер
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    # Запускаем веб-сервер в фоне
+    loop.create_task(run_web_server())
+    print("✅ Задача веб-сервера создана")
+
+    # Запускаем бота через executor
+    print("⏳ Ожидание запуска веб-сервера...")
+    executor.start_polling(dp, skip_updates=True)
