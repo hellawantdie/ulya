@@ -9,6 +9,35 @@ import os
 import re
 import secrets
 from dotenv import load_dotenv
+from aiohttp import web
+import asyncio
+
+async def health_check(request):
+    # Возвращаем просто "OK" — это всего 2 байта вместо килобайт
+    return web.Response(text="OK", status=200)
+
+
+async def run_web_server():
+    app = web.Application()
+    # Добавляем специальный эндпоинт для cron-job.org
+    app.router.add_get('/cron', health_check)  # ← используйте этот URL
+
+    port = int(os.environ.get('PORT', 10000))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    print(f"✅ Веб-сервер запущен на порту {port}")
+
+
+# Измените запуск в конце файла:
+async def main():
+    asyncio.create_task(run_web_server())  # ← запускаем сервер
+    await dp.start_polling()  # ← запускаем бота
+
+
+if __name__ == '__main__':
+    asyncio.run(main())
 
 load_dotenv()
 
